@@ -21,6 +21,7 @@ dist/
 # Runtime artifacts
 receipts.jsonl
 spend.sqlite3
+proofgate_spends.db
 *.log
 
 # OS

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProofGate demo console</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#121724; --panel2:#0e1320; --line:#232b3d;
+    --text:#e6ebf4; --dim:#8b95a9; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --grant:#2fbf71; --fraud:#e5484d; --hold:#f5a623; --accent:#6e9bff;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:32px 20px 80px}
+  .wrap{max-width:1060px;margin:0 auto}
+  header h1{font-size:30px;letter-spacing:-.02em}
+  header h1 span{color:var(--accent)}
+  header p{color:var(--dim);margin-top:6px;max-width:70ch}
+  .info{display:flex;gap:24px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);
+        border-radius:12px;padding:14px 20px;margin:22px 0 28px;font-size:13.5px}
+  .info b{display:block;color:var(--dim);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+  .info code{font-family:var(--mono);font-size:13px}
+  .info a{color:var(--accent);text-decoration:none}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  button.sc{background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text);
+     padding:14px 16px;text-align:left;cursor:pointer;font:inherit;transition:border-color .15s}
+  button.sc:hover{border-color:var(--accent)}
+  button.sc:disabled{opacity:.45;cursor:wait}
+  button.sc .t{font-weight:600}
+  button.sc .d{color:var(--dim);font-size:13px;margin-top:2px}
+  button.sc .x{float:right;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+  #out{margin-top:30px}
+  .run{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px}
+  .run h3{font-size:16px;margin-bottom:10px}
+  .step{border-left:2px solid var(--line);padding:8px 0 8px 16px;margin-left:4px}
+  .step .st{font-weight:600;font-size:14px}
+  .step .sd{color:var(--dim);font-family:var(--mono);font-size:12.5px;word-break:break-all;margin-top:2px}
+  .step a{color:var(--accent);font-size:13px;text-decoration:none}
+  .badge{display:inline-block;font-family:var(--mono);font-weight:700;font-size:13px;
+         padding:3px 12px;border-radius:99px;margin:6px 0 2px}
+  .GRANT{background:color-mix(in srgb,var(--grant) 16%,transparent);color:var(--grant);border:1px solid var(--grant)}
+  .FRAUD{background:color-mix(in srgb,var(--fraud) 16%,transparent);color:var(--fraud);border:1px solid var(--fraud)}
+  .HOLD{background:color-mix(in srgb,var(--hold) 16%,transparent);color:var(--hold);border:1px solid var(--hold)}
+  .reason{font-size:13.5px;margin-top:4px}
+  .ev{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:pre-wrap;word-break:break-all;
+      background:#0a0d15;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:8px}
+  .spin{color:var(--dim);font-size:14px}
+  .spin::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;vertical-align:-1px;
+      border:2px solid var(--dim);border-top-color:transparent;border-radius:50%;animation:r 0.8s linear infinite}
+  @keyframes r{to{transform:rotate(360deg)}}
+  .sig{color:var(--dim);font-size:12px;font-family:var(--mono);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Proof<span>Gate</span> <small style="font-size:14px;color:var(--dim);font-weight:400">demo console</small></h1>
+    <p>The gateway on port 8787 holds <b>no key</b> and trusts <b>no facilitator</b>: it verifies every
+       settlement claim against Hedera's public mirror node before serving anything. This console plays
+       the client, honest or lying. Three of the attacks stage <b>real testnet transfers</b>.</p>
+  </header>
+
+  <div class="info" id="info"><span class="spin">connecting to gateway</span></div>
+
+  <div class="grid">
+    <button class="sc" data-s="honest"><span class="x">real&nbsp;tx</span><div class="t">Honest payment</div><div class="d">402, pay full price with the memo binding, GRANT</div></button>
+    <button class="sc" data-s="fabricate"><span class="x">free</span><div class="t">Fabricate</div><div class="d">claim a settlement that never existed</div></button>
+    <button class="sc" data-s="pending"><span class="x">free</span><div class="t">Pending</div><div class="d">claim a tx the mirror has not seen yet</div></button>
+    <button class="sc" data-s="wrong-memo"><span class="x">real&nbsp;tx</span><div class="t">Wrong memo</div><div class="d">real full-price transfer, bound to nothing</div></button>
+    <button class="sc" data-s="short-pay"><span class="x">real&nbsp;tx</span><div class="t">Short-pay</div><div class="d">correct memo, 10% of the invoice</div></button>
+    <button class="sc" data-s="double-spend"><span class="x">real&nbsp;tx</span><div class="t">Double-spend</div><div class="d">one honest payment, presented twice</div></button>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const out = $("#out");
+
+async function loadInfo(){
+  try{
+    const i = await (await fetch("/api/info")).json();
+    $("#info").innerHTML = `
+      <span><b>network</b><code>${i.gateway.network}</code></span>
+      <span><b>resource price</b><code>${i.gateway.price_tinybar/1e8} HBAR</code></span>
+      <span><b>pays to</b><code><a href="${i.hashscan_payee}" target="_blank">${i.gateway.payTo}</a></code></span>
+      <span><b>gateway key custody</b><code>none (read-only verifier)</code></span>
+      <span><b>fraud attestations</b><code id="attc">${i.attestation_count}</code></span>`;
+  }catch(e){
+    $("#info").innerHTML = `<span style="color:var(--fraud)">gateway unreachable on :8787, start it first</span>`;
+  }
+}
+
+function verdictHtml(v){
+  if(!v) return "";
+  const ev = v.evidence && Object.keys(v.evidence).length
+    ? `<div class="ev">${Object.entries(v.evidence).map(([k,x])=>`${k}: ${x}`).join("\n")}</div>` : "";
+  const sig = v.signature ? `<div class="sig">signed attestation, ed25519, sha256=${v.signature.signed_sha256.slice(0,24)}&hellip;</div>` : "";
+  const res = v.resource ? `<div class="ev">resource served: ${JSON.stringify(v.resource)}</div>` : "";
+  return `<div><span class="badge ${v.outcome}">HTTP ${v.status} &middot; ${v.outcome}${v.predicate?` &middot; ${v.predicate}`:""}</span>
+    <div class="reason">${v.reason||""}</div>${res}${ev}${sig}</div>`;
+}
+
+async function run(sc, btn){
+  document.querySelectorAll("button.sc").forEach(b=>b.disabled=true);
+  const box = document.createElement("div");
+  box.className = "run";
+  box.innerHTML = `<h3>${btn.querySelector(".t").textContent}</h3><div class="spin">running live against testnet</div>`;
+  out.prepend(box);
+  try{
+    const r = await fetch(`/api/run/${sc}`, {method:"POST"});
+    const data = await r.json();
+    box.querySelector(".spin").remove();
+    for(const s of data.steps){
+      const d = document.createElement("div");
+      d.className = "step";
+      d.innerHTML = `<div class="st">${s.title}</div>
+        ${s.detail?`<div class="sd">${s.detail}</div>`:""}
+        ${s.link?`<a href="${s.link}" target="_blank">view on HashScan &nearr;</a>`:""}
+        ${verdictHtml(s.verdict)}`;
+      box.appendChild(d);
+    }
+  }catch(e){
+    box.querySelector(".spin").outerHTML = `<div style="color:var(--fraud)">failed: ${e}</div>`;
+  }
+  document.querySelectorAll("button.sc").forEach(b=>b.disabled=false);
+  loadInfo();
+}
+
+document.querySelectorAll("button.sc").forEach(b=>b.onclick=()=>run(b.dataset.s,b));
+loadInfo();
+</script>
+</body>
+</html>
