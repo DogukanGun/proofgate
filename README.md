@@ -16,6 +16,16 @@ cp .env.example .env                 # add HEDERA_OPERATOR_ID / _KEY from portal
 .venv/bin/python -m proofgate.demo.adversary # terminal 2: five attacks, live on testnet
 ```
 
+There is also a browser demo console with one button per scenario:
+
+```bash
+.venv/bin/python -m proofgate.demo.console   # http://localhost:8788 (needs the gateway running)
+```
+
+### Hosting the demo
+
+Vercel-style serverless does not fit this stack (long-lived gRPC client, sqlite ledger), so the repo ships a `Dockerfile` for Render / Railway / Fly instead. It runs `proofgate.demo.app`, which keeps the gateway private on localhost and exposes only the console on `$PORT`. Set three env vars in the platform dashboard: `HEDERA_OPERATOR_ID`, `HEDERA_OPERATOR_KEY` (a throwaway testnet payer), and `PROOFGATE_PAY_TO`. Anyone opening the URL can then run every scenario against the real testnet.
+
 The adversary stages three of its five attacks with **real on-chain transfers** and prints a HashScan link for each, so every FRAUD verdict is independently checkable:
 
 | # | Attack | On-chain? | Verdict |
